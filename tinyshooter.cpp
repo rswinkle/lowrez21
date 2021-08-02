@@ -26,6 +26,9 @@
 #define WIDTH 640
 #define HEIGHT 640
 
+#define X_RES 64
+#define Y_RES 64
+
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
 uint32_t rmask = 0xff000000;
 uint32_t gmask = 0x00ff0000;
@@ -95,7 +98,7 @@ SDL_Renderer* ren;
 SDL_Texture* tex;
 glContext the_Context;
 
-int width, height, mousex, mousey;
+int width, height;
 float fov, zmin, zmax;
 mat4 proj_mat;
 
@@ -124,11 +127,9 @@ struct vert_attribs
 	vert_attribs(vec3 p, vec3 n) : pos(p), normal(n) {}
 };
 
-#define NUM_SHADERS 2
 
 int polygon_mode;
-GLuint shaders[NUM_SHADERS];
-int cur_shader;
+GLuint shader;
 My_Uniforms the_uniforms;
 
 
@@ -282,17 +283,13 @@ int main(int argc, char** argv)
 	glUseProgram(basic_shader);
 	set_uniform(&the_uniforms);
 
-	shaders[0] = pglCreateProgram(gouraud_ads_vp, gouraud_ads_fp, 3, interpolation, GL_FALSE);
 
-	glUseProgram(shaders[0]);
-	set_uniform(&the_uniforms);
 
-	shaders[1] = pglCreateProgram(phong_ads_vp, phong_ads_fp, 3, interpolation, GL_FALSE);
-	glUseProgram(shaders[1]);
+	shader = pglCreateProgram(phong_ads_vp, phong_ads_fp, 3, interpolation, GL_FALSE);
+	glUseProgram(shader);
 	set_uniform(&the_uniforms);
 
 
-	cur_shader = 0;
 
 
 	mat4 view_mat;
@@ -367,7 +364,7 @@ int main(int argc, char** argv)
 
 		glBindVertexArray(vao);
 
-		glUseProgram(shaders[cur_shader]);
+		glUseProgram(shader);
 
 
 		the_uniforms.light_dir = mat3(view_mat)*light_direction;
@@ -481,8 +478,6 @@ int handle_events(GLFrame& camera_frame, unsigned int last_time, unsigned int cu
 				// vs shader runs for everything, fs only for pixels that
 				// isn't clipped or culled (z test does happen after though)
 				// and the vertices outnumber that
-				cur_shader++;
-				cur_shader %= NUM_SHADERS;
 			}
 			break;
 
@@ -492,8 +487,6 @@ int handle_events(GLFrame& camera_frame, unsigned int last_time, unsigned int cu
 				printf("window size %d x %d\n", event.window.data1, event.window.data2);
 				width = event.window.data1;
 				height = event.window.data2;
-				mousex = width/2;
-				mousey = height/2;
 
 				remake_projection = true;
 
@@ -621,55 +614,6 @@ void uniform_color_fp(float* fs_input, Shader_Builtins* builtins, void* uniforms
 	*fragcolor = u->color;
 }
 
-void gouraud_ads_vp(float* vs_output, void* vertex_attribs, Shader_Builtins* builtins, void* uniforms)
-{
-	vec4* vert_attribs = (vec4*)vertex_attribs;
-	My_Uniforms* u = (My_Uniforms*)uniforms;
-
-	// Get surface normal in eye coordinates
-	//make sure normalMatrix and normal are normalized before drawing
-	vec3 eye_normal = u->normal_mat * vert_attribs[ATTR_NORMAL].xyz();
-	
-	//non-local viewer and constant directional light
-	vec3 light_dir = normalize(u->light_dir);
-	vec3 eye_dir = vec3(0, 0, 1);	
-	
-	//as if all lights are white TODO
-	vec3 out_light = u->Ka;
-	
-	// Dot product gives us diffuse intensity
-	float diff = max(0.0f, dot(eye_normal, light_dir));
-
-	// add diffuse light
-	out_light += diff * u->Kd;
-
-
-	// Specular Light
-	vec3 r = reflect(-light_dir, eye_normal);
-	float spec = max(0.0f, dot(eye_dir, r));
-	if(diff > 0) {
-		float fSpec = pow(spec, u->shininess);
-		
-		out_light += u->Ks * fSpec;
-	}
-	
-	vs_output[0] = out_light.x;
-	vs_output[1] = out_light.y;
-	vs_output[2] = out_light.z;
-	
-
-	// Don't forget to transform the geometry!
-	*(vec4*)&builtins->gl_Position = u->mvp_mat * (vert_attribs[ATTR_VERTEX] + vec4(vert_attribs[ATTR_INSTANCE].xyz(), 0));
-
-}
-
-void gouraud_ads_fp(float* fs_input, Shader_Builtins* builtins, void* uniforms)
-{
-	glinternal_vec4 color = { fs_input[0], fs_input[1], fs_input[2], 1 };
-	builtins->gl_FragColor = color;
-}
-
-
 void phong_ads_vp(float* vs_output, void* vertex_attribs, Shader_Builtins* builtins, void* uniforms)
 {
 	vec4* vert_attribs = (vec4*)vertex_attribs;
@@ -704,12 +648,15 @@ void phong_ads_fp(float* fs_input, Shader_Builtins* builtins, void* uniforms)
 		// add diffuse light
 		out_light += lambertian * u->Kd;
 
+		/*
+		 specular is pointless especially at 64x64
 		// Specular Light
 		vec3 r = reflect(-s, n);
 		
 		float spec = max(0.0f, dot(r, v));
 		float shine = pow(spec, u->shininess);
 		out_light += u->Ks * shine;
+		*/
 	}
 	
 	glinternal_vec4 color = { out_light.x, out_light.y, out_light.z, 1 };
