@@ -175,6 +175,9 @@ SDL_Scancode controls[NCONTROLS] =
 
 #define FLOOR_SIZE 40
 
+#define SPHERE_RADIUS 0.6
+#define SPHERE_SPEED 8
+
 
 
 int main(int argc, char** argv)
@@ -208,7 +211,7 @@ int main(int argc, char** argv)
 	Mesh sphere;
 
 	generate_torus(torus.verts, torus.tris, torus.texcoords, 0.3, 0.1, 40, 20);
-	generate_sphere(sphere.verts, sphere.tris, sphere.texcoords, 0.1, 26, 13);
+	generate_sphere(sphere.verts, sphere.tris, sphere.texcoords, SPHERE_RADIUS, 26, 13);
 
 	compute_normals(torus.verts, torus.tris, NULL, DEG_TO_RAD(30), torus.normals);
 	compute_normals(sphere.verts, sphere.tris, NULL, DEG_TO_RAD(30), sphere.normals);
@@ -336,23 +339,24 @@ int main(int argc, char** argv)
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 
 	unsigned int old_time = 0, new_time=0, counter = 0, last_time = SDL_GetTicks();
-	float total_time;
+	float frame_time;
 	while (1) {
 		new_time = SDL_GetTicks();
 		if (handle_events(camera, last_time, new_time))
 			break;
 
+		frame_time = (new_time-last_time)/1000.0f;
 		last_time = new_time;
-		total_time = new_time/1000.0f;
 		if (new_time - old_time > 3000) {
 			printf("%f FPS\n", counter*1000.f/(new_time-old_time));
 			old_time = new_time;
 			counter = 0;
 		}
 
-		for (int i=0; i<NUM_SPHERES+1; i++) {
-			instance_pos[i].z += 0.1;
-			if (instance_pos[i].z > FLOOR_SIZE) {
+		// move the spheres
+		for (int i=0; i<NUM_SPHERES; i++) {
+			instance_pos[i].z += SPHERE_SPEED*frame_time;
+			if (instance_pos[i].z > 5) {
 				instance_pos[i].x = rsw::rand_float(-FLOOR_SIZE, FLOOR_SIZE);
 				instance_pos[i].z = -FLOOR_SIZE;
 			}
@@ -386,29 +390,7 @@ int main(int argc, char** argv)
 		the_uniforms.Kd = sphere_diffuse;
 		the_uniforms.Ks = sphere_specular;
 
-		glDrawArraysInstancedBaseInstance(GL_TRIANGLES, torus.tris.size()*3, sphere.tris.size()*3, NUM_SPHERES, 1);
-
-		mat4 rot_mat;
-		rsw::load_rotation_mat4(rot_mat, vec3(0, 1, 0), -1*total_time*DEG_TO_RAD(60.0f));
-
-		the_uniforms.mvp_mat = mvp_mat * rot_mat * translate_sphere;
-		the_uniforms.normal_mat = mat3(view_mat*rot_mat);
-
-		glDrawArrays(GL_TRIANGLES, torus.tris.size()*3, sphere.tris.size()*3);
-
-
-		//draw rotating torus
-		mvp_mat = proj_mat * view_mat;
-		rot_mat;
-		rsw::load_rotation_mat4(rot_mat, vec3(0, 1, 0), total_time*DEG_TO_RAD(60.0f));
-		the_uniforms.mvp_mat = mvp_mat * rot_mat;
-		the_uniforms.normal_mat = mat3(view_mat*rot_mat);
-
-		the_uniforms.Ka = torus_ambient;
-		the_uniforms.Kd = torus_diffuse;
-		the_uniforms.Ks = torus_specular;
-
-		glDrawArrays(GL_TRIANGLES, 0, torus.tris.size()*3);
+		glDrawArraysInstanced(GL_TRIANGLES, torus.tris.size()*3, sphere.tris.size()*3, NUM_SPHERES);
 
 		SDL_UpdateTexture(tex, NULL, the_Context.back_buffer.buf, the_Context.back_buffer.w * sizeof(u32));
 		//Render the scene
