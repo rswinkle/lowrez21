@@ -99,6 +99,7 @@ SDL_Texture* tex;
 glContext the_Context;
 
 int width, height;
+bool show_cursor = true;
 float fov, zmin, zmax;
 mat4 proj_mat;
 
@@ -142,8 +143,8 @@ enum Control_Names {
 	DOWN,
 	TILTLEFT,
 	TILTRIGHT,
-
 	HIDECURSOR,
+
 	FOVUP,
 	FOVDOWN,
 	ZMINUP,
@@ -167,7 +168,8 @@ SDL_Scancode controls[NCONTROLS] =
 	SDL_SCANCODE_LSHIFT,
 	SDL_SCANCODE_SPACE,
 	SDL_SCANCODE_Q,
-	SDL_SCANCODE_E
+	SDL_SCANCODE_E,
+	SDL_SCANCODE_R
 };
 
 
@@ -180,7 +182,7 @@ int main(int argc, char** argv)
 	setup_context();
 
 	polygon_mode = 2;
-	fov = 35;
+	fov = 45;
 	zmin = 0.5;
 	zmax = 100;
 
@@ -297,7 +299,7 @@ int main(int argc, char** argv)
 	mat3 normal_mat;
 	mat4 translate_sphere = rsw::translation_mat4(vec3(0.8f, 0.4f, 0.0f));
 
-	rsw::make_perspective_matrix(proj_mat, DEG_TO_RAD(35.0f), WIDTH/(float)HEIGHT, 0.3f, 100.0f);
+	rsw::make_perspective_matrix(proj_mat, DEG_TO_RAD(45.0f), WIDTH/(float)HEIGHT, 0.3f, 100.0f);
 
 
 
@@ -398,7 +400,7 @@ int main(int argc, char** argv)
 
 		glDrawArrays(GL_TRIANGLES, 0, torus.tris.size()*3);
 
-		SDL_UpdateTexture(tex, NULL, the_Context.back_buffer.buf, width * sizeof(u32));
+		SDL_UpdateTexture(tex, NULL, the_Context.back_buffer.buf, the_Context.back_buffer.w * sizeof(u32));
 		//Render the scene
 		SDL_RenderCopy(ren, tex, NULL, NULL);
 		SDL_RenderPresent(ren);
@@ -421,8 +423,8 @@ void setup_context()
 	}
 
 	// TODO resizable
-	width = WIDTH;
-	height = HEIGHT;
+	width = X_RES;
+	height = Y_RES;
 
 	window = SDL_CreateWindow("Sphereworld Color", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIDTH, HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 	if (!window) {
@@ -431,10 +433,10 @@ void setup_context()
 	}
 
 	ren = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
-	tex = SDL_CreateTexture(ren, PIX_FORMAT, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
+	tex = SDL_CreateTexture(ren, PIX_FORMAT, SDL_TEXTUREACCESS_STREAMING, X_RES, Y_RES);
 
 	u32* bbufpix = NULL;
-	if (!init_glContext(&the_Context, &bbufpix, WIDTH, HEIGHT, 32, rmask, gmask, bmask, amask)) {
+	if (!init_glContext(&the_Context, &bbufpix, X_RES, Y_RES, 32, rmask, gmask, bmask, amask)) {
 		puts("Failed to initialize glContext");
 		exit(0);
 	}
@@ -478,6 +480,9 @@ int handle_events(GLFrame& camera_frame, unsigned int last_time, unsigned int cu
 				// vs shader runs for everything, fs only for pixels that
 				// isn't clipped or culled (z test does happen after though)
 				// and the vertices outnumber that
+			} else if (sc == controls[HIDECURSOR]) {
+				show_cursor = !show_cursor;
+				SDL_SetRelativeMouseMode((SDL_bool)show_cursor);
 			}
 			break;
 
@@ -488,12 +493,12 @@ int handle_events(GLFrame& camera_frame, unsigned int last_time, unsigned int cu
 				width = event.window.data1;
 				height = event.window.data2;
 
-				remake_projection = true;
+				//remake_projection = true;
 
-				resize_framebuffer(width, height);
-				glViewport(0, 0, width, height);
-				SDL_DestroyTexture(tex);
-				tex = SDL_CreateTexture(ren, PIX_FORMAT, SDL_TEXTUREACCESS_STREAMING, width, height);
+				//resize_framebuffer(width, height);
+				//glViewport(0, 0, width, height);
+				//SDL_DestroyTexture(tex);
+				//tex = SDL_CreateTexture(ren, PIX_FORMAT, SDL_TEXTUREACCESS_STREAMING, width, height);
 				break;
 			}
 			break;
