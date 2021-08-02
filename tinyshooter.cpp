@@ -26,8 +26,8 @@
 #define WIDTH 640
 #define HEIGHT 640
 
-#define X_RES 64
-#define Y_RES 64
+#define X_RES 640
+#define Y_RES 640
 
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
 uint32_t rmask = 0xff000000;
@@ -349,6 +349,16 @@ int main(int argc, char** argv)
 			old_time = new_time;
 			counter = 0;
 		}
+
+		for (int i=0; i<NUM_SPHERES+1; i++) {
+			instance_pos[i].z += 0.1;
+			if (instance_pos[i].z > FLOOR_SIZE) {
+				instance_pos[i].x = rsw::rand_float(-FLOOR_SIZE, FLOOR_SIZE);
+				instance_pos[i].z = -FLOOR_SIZE;
+			}
+		}
+		glBindBuffer(GL_ARRAY_BUFFER, inst_buf);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, instance_pos.size()*3*sizeof(float), &instance_pos[0]);
 
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
