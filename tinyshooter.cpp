@@ -286,13 +286,13 @@ int main(int argc, char** argv)
 
 	GLuint basic_shader = pglCreateProgram(basic_transform_vp, uniform_color_fp, 0, NULL, GL_FALSE);
 	glUseProgram(basic_shader);
-	set_uniform(&the_uniforms);
+	pglSetUniform(&the_uniforms);
 
 
 
 	shader = pglCreateProgram(phong_ads_vp, phong_ads_fp, 3, interpolation, GL_FALSE);
 	glUseProgram(shader);
-	set_uniform(&the_uniforms);
+	pglSetUniform(&the_uniforms);
 
 
 
@@ -356,9 +356,9 @@ int main(int argc, char** argv)
 		// move the spheres
 		for (int i=0; i<NUM_SPHERES; i++) {
 			instance_pos[i].z += SPHERE_SPEED*frame_time;
-			if (instance_pos[i].z > 5) {
+			if (instance_pos[i].z > FLOOR_SIZE/2) {
 				instance_pos[i].x = rsw::rand_float(-FLOOR_SIZE, FLOOR_SIZE);
-				instance_pos[i].z = -FLOOR_SIZE;
+				instance_pos[i].z = -FLOOR_SIZE/2;
 			}
 		}
 		glBindBuffer(GL_ARRAY_BUFFER, inst_buf);
@@ -485,12 +485,12 @@ int handle_events(GLFrame& camera_frame, unsigned int last_time, unsigned int cu
 				width = event.window.data1;
 				height = event.window.data2;
 
-				//remake_projection = true;
+				remake_projection = true;
 
-				//resize_framebuffer(width, height);
-				//glViewport(0, 0, width, height);
-				//SDL_DestroyTexture(tex);
-				//tex = SDL_CreateTexture(ren, PIX_FORMAT, SDL_TEXTUREACCESS_STREAMING, width, height);
+				pglResizeFramebuffer(width, height);
+				glViewport(0, 0, width, height);
+				SDL_DestroyTexture(tex);
+				tex = SDL_CreateTexture(ren, PIX_FORMAT, SDL_TEXTUREACCESS_STREAMING, width, height);
 				break;
 			}
 			break;
