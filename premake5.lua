@@ -29,10 +29,7 @@ solution "lowrezjam"
 
 	configuration "Release"
 		defines { "NDEBUG" }
-		optimize "On"
-
-	configuration { "gmake", "Release" }
-	buildoptions { "-O3" }
+		optimize "Speed"
 
 	project "tinyshooter"
 		language "C++"
